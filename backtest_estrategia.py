@@ -37,9 +37,10 @@ class EstrategiaIA(bt.Strategy):
         self.atr14 = bt.indicators.ATR(self.datas[0], period=self.p.atr_period)
 
         # --- Variáveis para cálculo de Pivot Points (diário) ---
-        self.daily_high = bt.indicators.Highest(self.datahigh, period=1, ago=1, _name='daily_high', timeframe=bt.TimeFrame.Days)
-        self.daily_low = bt.indicators.Lowest(self.datalow, period=1, ago=1, _name='daily_low', timeframe=bt.TimeFrame.Days)
-        self.daily_close = bt.indicators.Close(self.datas[0], ago=1, _name='daily_close', timeframe=bt.TimeFrame.Days)
+        # Removido 'ago=1' pois causava TypeError
+        self.daily_high = bt.indicators.Highest(self.datahigh, period=1, _name='daily_high', timeframe=bt.TimeFrame.Days)
+        self.daily_low = bt.indicators.Lowest(self.datalow, period=1, _name='daily_low', timeframe=bt.TimeFrame.Days)
+        self.daily_close = bt.indicators.Close(self.datas[0], _name='daily_close', timeframe=bt.TimeFrame.Days)
 
         self.pivot_val = bt.indicators.Generic(lambda x, y, z: (x + y + z) / 3, self.daily_high, self.daily_low, self.daily_close, _name='pivot_val')
         self.r1_val = bt.indicators.Generic(lambda p, l: 2 * p - l, self.pivot_val, self.daily_low, _name='r1_val')

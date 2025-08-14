@@ -139,8 +139,7 @@ if __name__ == '__main__':
 
     # Definir o feed de dados PandasData com uma subclasse explícita
     class CustomPandasData(bt.feeds.PandasData):
-        # Standard OHLCV lines are automatically mapped if names match.
-        # We need to explicitly define custom lines.
+        # Apenas as colunas *adicionais* que não são OHLCV padrão
         lines = (
             'real_volume',
             'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
@@ -150,18 +149,11 @@ if __name__ == '__main__':
             'session_asia', 'session_london', 'session_ny',
         )
 
-        # Define the custom lines as bt.line objects
-        # This is the crucial part for older Backtrader versions
-        _l = {}
-        for line_name in lines:
-            _l[line_name] = bt.line.Line(name=line_name)
-        locals().update(_l)
-
-        # Map standard Backtrader column names to custom column names in your DataFrame
-        # 'datetime' is handled by index_col='time'
-        # 'open', 'high', 'low', 'close' are assumed to match
-        volume = 'volume' # Already renamed 'tick_volume' to 'volume' in df
-        openinterest = -1 # Indicate no 'openinterest' column
+        # Mapeamento de colunas padrão do Backtrader para os nomes no seu DataFrame
+        # 'datetime' é tratado por index_col='time'
+        # 'open', 'high', 'low', 'close' são assumidos como padrão
+        volume = 'volume' # Já renomeado 'tick_volume' para 'volume' no df
+        openinterest = -1 # Indica que não há 'openinterest'
 
     # Adicionar os dados ao Cerebro usando o feed personalizado
     data = CustomPandasData(dataname=df)

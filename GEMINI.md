@@ -38,12 +38,18 @@ O projeto foi atualizado para incluir um **ciclo de aprendizado contínuo**, per
         python robo_trader.py
         ```
 
-3.  **Retreinamento Periódico:**
+3.  **Retreinamento Periódico (Manual ou Automático):**
     *   Após o robô ter executado alguns trades, rode o script de treinamento novamente para criar um modelo melhorado:
         ```bash
         python treinamento_ia.py
         ```
     *   O robô passará a usar o novo modelo automaticamente.
+
+### Automação do Retreinamento (Windows)
+
+*   Para automatizar o processo de retreinamento, foi criado o script `retreinar_ia.bat`.
+*   Este script pode ser agendado para execução periódica (ex: semanal) através do **Agendador de Tarefas do Windows**.
+*   A tarefa agendada deve ser configurada para iniciar o programa `retreinar_ia.bat`.
 
 ### Convenções de Desenvolvimento
 

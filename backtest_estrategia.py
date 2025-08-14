@@ -2,6 +2,7 @@ import backtrader as bt
 import pandas as pd
 import joblib
 from datetime import datetime
+import talib as ta # Usado para padrões de vela, pois backtrader não tem todos
 
 # --- CLASSE DA ESTRATÉGIA PARA BACKTRADER ---
 class EstrategiaIA(bt.Strategy):
@@ -13,7 +14,7 @@ class EstrategiaIA(bt.Strategy):
 
     def __init__(self):
         """Inicializa a estratégia, indicadores e o modelo de IA."""
-        print("--- Inicializando Estratégia para Backtest ---")
+        print("--- Inicializando Estratégia para Backtest (Recalculando Indicadores) ---")
         # Carregar o modelo de IA treinado
         try:
             self.model = joblib.load('modelo_ia_trade.joblib')
@@ -23,42 +24,37 @@ class EstrategiaIA(bt.Strategy):
             print("ERRO CRÍTICO: Arquivo 'modelo_ia_trade.joblib' não encontrado!")
             self.model = None
 
-        # Referências para as linhas de dados
+        # Referências para as linhas de dados OHLCV
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
         self.datahigh = self.datas[0].high
         self.datalow = self.datas[0].low
-        self.datavolume = self.datas[0].volume # Referência para o volume
+        self.datavolume = self.datas[0].volume
 
-        # Indicadores do Backtrader (usando as linhas de dados mapeada)
+        # --- Indicadores Backtrader ---
         self.ema50 = bt.indicators.EMA(self.datas[0], period=self.p.ema_short)
         self.ema200 = bt.indicators.EMA(self.datas[0], period=self.p.ema_long)
         self.atr14 = bt.indicators.ATR(self.datas[0], period=self.p.atr_period)
-        
-        # Padrões de vela e Pivots (agora mapeados como linhas de dados)
-        self.engulfing = self.datas[0].engulfing
-        self.hammer = self.datas[0].hammer
-        self.s1 = self.datas[0].s1
-        self.s2 = self.datas[0].s2
-        self.s3 = self.datas[0].s3
-        self.r1 = self.datas[0].r1
-        self.r2 = self.datas[0].r2
-        self.r3 = self.datas[0].r3
-        self.pivot = self.datas[0].pivot
 
-        # Features de tempo e sessão (agora mapeadas como linhas de dados)
-        self.hour = self.datas[0].hour
-        self.day_of_week = self.datas[0].day_of_week
-        self.session_asia = self.datas[0].session_asia
-        self.session_london = self.datas[0].session_london
-        self.session_ny = self.datas[0].session_ny
+        # --- Variáveis para cálculo de Pivot Points (diário) ---
+        self.daily_high = bt.indicators.Highest(self.datahigh, period=1, ago=1, _name='daily_high', timeframe=bt.TimeFrame.Days)
+        self.daily_low = bt.indicators.Lowest(self.datalow, period=1, ago=1, _name='daily_low', timeframe=bt.TimeFrame.Days)
+        self.daily_close = bt.indicators.Close(self.datas[0], ago=1, _name='daily_close', timeframe=bt.TimeFrame.Days)
+
+        self.pivot_val = bt.indicators.Generic(lambda x, y, z: (x + y + z) / 3, self.daily_high, self.daily_low, self.daily_close, _name='pivot_val')
+        self.r1_val = bt.indicators.Generic(lambda p, l: 2 * p - l, self.pivot_val, self.daily_low, _name='r1_val')
+        self.s1_val = bt.indicators.Generic(lambda p, h: 2 * p - h, self.pivot_val, self.daily_high, _name='s1_val')
+        self.r2_val = bt.indicators.Generic(lambda p, h, l: p + (h - l), self.pivot_val, self.daily_high, self.daily_low, _name='r2_val')
+        self.s2_val = bt.indicators.Generic(lambda p, h, l: p - (h - l), self.pivot_val, self.daily_high, self.daily_low, _name='s2_val')
+        self.r3_val = bt.indicators.Generic(lambda h, p, l: h + 2 * (p - l), self.daily_high, self.pivot_val, self.daily_low, _name='r3_val')
+        self.s3_val = bt.indicators.Generic(lambda l, p, h: l - 2 * (h - p), self.daily_low, self.pivot_val, self.daily_high, _name='s3_val')
 
         self.order = None
 
     def notify_order(self, order):
         """Notificação de status da ordem."""
         if order.status in [order.Submitted, order.Accepted]:
-            return # Ignora ordens submetidas/aceitas
+            return
 
         if order.status in [order.Completed]:
             if order.isbuy():
@@ -73,65 +69,85 @@ class EstrategiaIA(bt.Strategy):
     def next(self):
         """Lógica principal da estratégia, executada a cada vela."""
         if self.order or self.model is None:
-            return # Se já temos uma ordem pendente ou o modelo não carregou, não faz nada
+            return
 
-        # Apenas opera se não tiver posição aberta
-        if not self.position:
-            signal = 0
-            atr_val = self.atr14[0]
+        # Garante que temos dados suficientes para todos os indicadores
+        if len(self.dataopen) < max(self.p.ema_long, self.p.atr_period, 2): # 2 para pivots
+            return
 
-            # Condições de Compra
-            if (self.ema50[0] > self.ema200[0] and
-               (self.engulfing[0] > 0 or self.hammer[0] > 0) and
-               ((abs(self.datalow[0] - self.s1[0]) < atr_val * 0.7) or 
-                (abs(self.datalow[0] - self.s2[0]) < atr_val * 0.7))):
-                signal = 1
+        signal = 0
+        atr_val = self.atr14[0]
 
-            # Condições de Venda
-            elif (self.ema50[0] < self.ema200[0] and
-                  self.engulfing[0] < 0 and
-                  ((abs(self.datahigh[0] - self.r1[0]) < atr_val * 0.7) or 
-                   (abs(self.datahigh[0] - self.r2[0]) < atr_val * 0.7))):
-                signal = -1
+        # --- Cálculo de Padrões de Vela (usando TA-Lib diretamente) ---
+        # backtrader tem alguns, mas TA-Lib é mais completo e já estamos usando
+        # É importante passar arrays numpy para o TA-Lib
+        open_arr = self.dataopen.get(size=max(self.p.ema_long, self.p.atr_period, 2))
+        high_arr = self.datahigh.get(size=max(self.p.ema_long, self.p.atr_period, 2))
+        low_arr = self.datalow.get(size=max(self.p.ema_long, self.p.atr_period, 2))
+        close_arr = self.dataclose.get(size=max(self.p.ema_long, self.p.atr_period, 2))
 
-            # Se um sinal técnico foi gerado, consultar a IA
-            if signal != 0:
-                # Montar o DataFrame com os dados da vela ATUAL para a previsão
-                current_candle_data = {
-                    'open': self.dataopen[0],
-                    'high': self.datahigh[0],
-                    'low': self.datalow[0],
-                    'close': self.dataclose[0],
-                    's1': self.s1[0], 's2': self.s2[0], 's3': self.s3[0],
-                    'r1': self.r1[0], 'r2': self.r2[0], 'r3': self.r3[0],
-                    'pivot': self.pivot[0],
-                    'ema50': self.ema50[0],
-                    'ema200': self.ema200[0],
-                    'atr14': self.atr14[0],
-                    'engulfing': self.engulfing[0],
-                    'hammer': self.hammer[0],
-                    'hour': self.hour[0],
-                    'day_of_week': self.day_of_week[0],
-                    'session_asia': self.session_asia[0],
-                    'session_london': self.session_london[0],
-                    'session_ny': self.session_ny[0],
-                }
-                features_df = pd.DataFrame([current_candle_data])[self.features_order]
-                
-                prediction = self.model.predict(features_df)[0]
+        engulfing = ta.CDLENGULFING(open_arr, high_arr, low_arr, close_arr)[-1]
+        hammer = ta.CDLHAMMER(open_arr, high_arr, low_arr, close_arr)[-1]
 
-                # Se a IA prever sucesso (1), envia a ordem
-                if prediction == 1:
-                    if signal == 1:
-                        self.order = self.buy()
-                    elif signal == -1:
-                        self.order = self.sell()
+        # --- Features de Tempo e Sessão ---
+        current_datetime = self.datas[0].datetime.datetime(0)
+        current_hour = current_datetime.hour
+        current_day_of_week = current_datetime.weekday()
+        session_asia = 1 if 0 <= current_hour <= 8 else 0
+        session_london = 1 if 7 <= current_hour <= 16 else 0
+        session_ny = 1 if 12 <= current_hour <= 21 else 0
+
+        # --- Condições de Compra ---
+        if (self.ema50[0] > self.ema200[0] and
+           (engulfing > 0 or hammer > 0) and
+           ((abs(self.datalow[0] - self.s1_val[0]) < atr_val * 0.7) or 
+            (abs(self.datalow[0] - self.s2_val[0]) < atr_val * 0.7))):
+            signal = 1
+
+        # --- Condições de Venda ---
+        elif (self.ema50[0] < self.ema200[0] and
+              engulfing < 0 and
+              ((abs(self.datahigh[0] - self.r1_val[0]) < atr_val * 0.7) or 
+               (abs(self.datahigh[0] - self.r2_val[0]) < atr_val * 0.7))):
+            signal = -1
+
+        # --- Se um sinal técnico foi gerado, consultar a IA ---
+        if signal != 0:
+            current_candle_data = {
+                'open': self.dataopen[0],
+                'high': self.datahigh[0],
+                'low': self.datalow[0],
+                'close': self.dataclose[0],
+                's1': self.s1_val[0], 's2': self.s2_val[0], 's3': self.s3_val[0],
+                'r1': self.r1_val[0], 'r2': self.r2_val[0], 'r3': self.r3_val[0],
+                'pivot': self.pivot_val[0],
+                'ema50': self.ema50[0],
+                'ema200': self.ema200[0],
+                'atr14': self.atr14[0],
+                'engulfing': engulfing,
+                'hammer': hammer,
+                'hour': current_hour,
+                'day_of_week': current_day_of_week,
+                'session_asia': session_asia,
+                'session_london': session_london,
+                'session_ny': session_ny,
+            }
+            features_df = pd.DataFrame([current_candle_data])[self.features_order]
+            
+            prediction = self.model.predict(features_df)[0]
+
+            # Se a IA prever sucesso (1), envia a ordem
+            if prediction == 1:
+                if signal == 1:
+                    self.order = self.buy()
+                elif signal == -1:
+                    self.order = self.sell()
 
 # --- FUNÇÃO PRINCIPAL PARA EXECUTAR O BACKTEST ---
 if __name__ == '__main__':
     cerebro = bt.Cerebro()
 
-    # Carregar os dados com indicadores
+    # Carregar os dados brutos
     df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time'], index_col='time')
     
     # Renomear 'tick_volume' para 'volume' para compatibilidade com Backtrader
@@ -142,11 +158,6 @@ if __name__ == '__main__':
         # Apenas as colunas *adicionais* que não são OHLCV padrão
         lines = (
             'real_volume',
-            'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
-            'ema50', 'ema200', 'atr14',
-            'engulfing', 'hammer',
-            'hour', 'day_of_week',
-            'session_asia', 'session_london', 'session_ny',
         )
 
         # Mapeamento de colunas padrão do Backtrader para os nomes no seu DataFrame

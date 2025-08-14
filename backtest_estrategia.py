@@ -28,6 +28,7 @@ class EstrategiaIA(bt.Strategy):
         self.dataopen = self.datas[0].open
         self.datahigh = self.datas[0].high
         self.datalow = self.datas[0].low
+        self.datavolume = self.datas[0].volume # Referência para o volume
 
         # Indicadores do Backtrader (usando as linhas de dados mapeada)
         self.ema50 = bt.indicators.EMA(self.datas[0], period=self.p.ema_short)
@@ -132,20 +133,21 @@ if __name__ == '__main__':
 
     # Mapeamento das colunas do CSV para o Backtrader
     class MyPandasData(bt.feeds.PandasData):
+        # Apenas as colunas *adicionais* que não são OHLCV padrão
         lines = (
-            'tick_volume', 'real_volume', 
             'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
             'ema50', 'ema200', 'atr14',
             'engulfing', 'hammer',
             'hour', 'day_of_week',
             'session_asia', 'session_london', 'session_ny',
+            'real_volume', # Adicionando real_volume como uma linha personalizada
         )
         
         # Mapeamento de colunas padrão do Backtrader para os nomes no seu CSV
-        cols = ['datetime', 'open', 'high', 'low', 'close', 'volume', 'openinterest']
-        # datetime já está mapeado pelo index_col='time'
-        volume = 'tick_volume' # Mapeia a coluna 'tick_volume' do CSV para 'volume' do Backtrader
-        openinterest = -1 # Indica que não há coluna de open interest
+        # 'datetime' é tratado por index_col='time'
+        # 'open', 'high', 'low', 'close' são assumidos como padrão
+        volume = 'tick_volume'  # Mapeia a coluna 'tick_volume' do CSV para 'volume' do Backtrader
+        openinterest = -1       # Indica que não há coluna de open interest
 
     # Carregar os dados com indicadores
     df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time'], index_col='time')

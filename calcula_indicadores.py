@@ -6,7 +6,7 @@ OUTPUT_FILE = "dados_com_indicadores.csv"
 
 def calculate_indicators():
     """
-    Lê os dados brutos e salva apenas as colunas OHLCV e volume em um novo arquivo CSV.
+    Lê os dados brutos e salva apenas as colunas OHLCV e tick_volume em um novo arquivo CSV.
     """
     print(f"Lendo dados de {INPUT_FILE}...")
     try:
@@ -18,8 +18,8 @@ def calculate_indicators():
 
     print("Preparando dados brutos para backtest...")
 
-    # Seleciona apenas as colunas necessárias para o backtest (OHLCV + volumes)
-    df_output = df[['time', 'open', 'high', 'low', 'close', 'tick_volume', 'real_volume']]
+    # Seleciona apenas as colunas necessárias para o backtest (OHLCV + tick_volume)
+    df_output = df[['time', 'open', 'high', 'low', 'close', 'tick_volume']]
 
     # Remove quaisquer linhas com valores NaN
     df_output.dropna(inplace=True)

@@ -16,8 +16,11 @@ MODEL_FILE = "modelo_ia_trade.joblib"
 # --- FUNÇÕES AUXILIARES ---
 def calculate_features(df):
     """Calcula todos os indicadores e features necessários para a IA."""
+    # Criamos uma coluna de datetime dedicada para ser o índice e para features de tempo
+    df['time_dt'] = pd.to_datetime(df['time'], unit='s')
+    df.set_index('time_dt', inplace=True)
+
     # Pivots (simplificado para tempo real)
-    df.set_index(pd.to_datetime(df['time'], unit='s'), inplace=True)
     daily_df = df.resample('D').agg({'high': 'max', 'low': 'min', 'close': 'last'})
     prev_day = daily_df.shift(1)
     pivot = (prev_day['high'] + prev_day['low'] + prev_day['close']) / 3
@@ -29,7 +32,7 @@ def calculate_features(df):
     s3 = prev_day['low'] - 2 * (pivot - prev_day['high'])
     pivots_df = pd.DataFrame({'pivot': pivot, 'r1': r1, 's1': s1, 'r2': r2, 's2': s2, 'r3': r3, 's3': s3})
     df = pd.merge_asof(df, pivots_df, left_index=True, right_index=True)
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True) # Agora cria a coluna 'time_dt' sem conflito
 
     # Indicadores TA-Lib
     df['ema50'] = ta.EMA(df['close'], timeperiod=50)
@@ -38,8 +41,7 @@ def calculate_features(df):
     df['engulfing'] = ta.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
     df['hammer'] = ta.CDLHAMMER(df['open'], df['high'], df['low'], df['close'])
     
-    # Features de tempo
-    df['time_dt'] = pd.to_datetime(df['time'], unit='s')
+    # Features de tempo (usando a coluna 'time_dt' que já criamos)
     df['hour'] = df['time_dt'].dt.hour
     df['day_of_week'] = df['time_dt'].dt.dayofweek
     return df.dropna()

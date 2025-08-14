@@ -1,0 +1,11 @@
+metatrader5
+pandas
+numpy
+# Para TA-Lib, a instalação pode exigir passos adicionais.
+# No Windows, tente: pip install TA-Lib-0.4.28-cp310-cp310-win_amd64.whl (ajuste a versão do Python)
+# ou visite https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
+ta-lib
+scikit-learn
+backtrader
+investpy
+mplfinance

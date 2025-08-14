@@ -133,29 +133,34 @@ if __name__ == '__main__':
 
     # Carregar os dados com indicadores
     df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time'], index_col='time')
+    
+    # Renomear 'tick_volume' para 'volume' para compatibilidade com Backtrader
+    df.rename(columns={'tick_volume': 'volume'}, inplace=True)
 
-    # Definir o feed de dados PandasData
-    data = bt.feeds.PandasData(
-        dataname=df,
-        # Mapeamento de colunas padrão do Backtrader para os nomes no seu CSV
-        datetime='time', # Já definido por index_col
-        open='open',
-        high='high',
-        low='low',
-        close='close',
-        volume='tick_volume',  # Mapeia a coluna 'tick_volume' do CSV para 'volume' do Backtrader
-        openinterest=-1,       # Indica que não há coluna de open interest
-
-        # Mapeamento das linhas adicionais usando fromname
-        fromname=dict(
-            pivot='pivot', r1='r1', s1='s1', r2='r2', s2='s2', r3='r3', s3='s3',
-            ema50='ema50', ema200='ema200', atr14='atr14',
-            engulfing='engulfing', hammer='hammer',
-            hour='hour', day_of_week='day_of_week',
-            session_asia='session_asia', session_london='session_london', session_ny='session_ny',
-            real_volume='real_volume',
+    # Definir o feed de dados PandasData com uma subclasse explícita
+    class CustomPandasData(bt.feeds.PandasData):
+        # Mapeamento de colunas padrão do Backtrader para os nomes no seu DataFrame
+        # 'datetime' é tratado por index_col='time'
+        # 'open', 'high', 'low', 'close' são assumidos como padrão
+        # 'volume' já foi renomeado no DataFrame
+        
+        # Definir as linhas adicionais
+        lines = (
+            'real_volume', # real_volume é uma linha adicional
+            'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
+            'ema50', 'ema200', 'atr14',
+            'engulfing', 'hammer',
+            'hour', 'day_of_week',
+            'session_asia', 'session_london', 'session_ny',
         )
-    )
+
+        # Mapeamento de colunas para as linhas definidas acima (se os nomes forem diferentes)
+        # Como os nomes das colunas no DataFrame e nas linhas são os mesmos, não precisamos de fromname/toname aqui
+        # Mas se tivéssemos, seria algo como:
+        # real_volume = 'real_volume_col_name_in_df'
+
+    # Adicionar os dados ao Cerebro usando o feed personalizado
+    data = CustomPandasData(dataname=df)
     cerebro.adddata(data)
 
     # Adicionar a estratégia

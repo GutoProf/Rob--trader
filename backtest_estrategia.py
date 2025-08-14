@@ -37,18 +37,18 @@ class EstrategiaIA(bt.Strategy):
         self.atr14 = bt.indicators.ATR(self.datas[0], period=self.p.atr_period)
 
         # --- Variáveis para cálculo de Pivot Points (diário) ---
-        # Removido 'ago=1' pois causava TypeError
-        self.daily_high = bt.indicators.Highest(self.datahigh, period=1, _name='daily_high', timeframe=bt.TimeFrame.Days)
-        self.daily_low = bt.indicators.Lowest(self.datalow, period=1, _name='daily_low', timeframe=bt.TimeFrame.Days)
-        self.daily_close = bt.indicators.Close(self.datas[0], _name='daily_close', timeframe=bt.TimeFrame.Days)
+        # Removido '_name' pois causava TypeError
+        self.daily_high = bt.indicators.Highest(self.datahigh, period=1, timeframe=bt.TimeFrame.Days)
+        self.daily_low = bt.indicators.Lowest(self.datalow, period=1, timeframe=bt.TimeFrame.Days)
+        self.daily_close = bt.indicators.Close(self.datas[0], timeframe=bt.TimeFrame.Days)
 
-        self.pivot_val = bt.indicators.Generic(lambda x, y, z: (x + y + z) / 3, self.daily_high, self.daily_low, self.daily_close, _name='pivot_val')
-        self.r1_val = bt.indicators.Generic(lambda p, l: 2 * p - l, self.pivot_val, self.daily_low, _name='r1_val')
-        self.s1_val = bt.indicators.Generic(lambda p, h: 2 * p - h, self.pivot_val, self.daily_high, _name='s1_val')
-        self.r2_val = bt.indicators.Generic(lambda p, h, l: p + (h - l), self.pivot_val, self.daily_high, self.daily_low, _name='r2_val')
-        self.s2_val = bt.indicators.Generic(lambda p, h, l: p - (h - l), self.pivot_val, self.daily_high, self.daily_low, _name='s2_val')
-        self.r3_val = bt.indicators.Generic(lambda h, p, l: h + 2 * (p - l), self.daily_high, self.pivot_val, self.daily_low, _name='r3_val')
-        self.s3_val = bt.indicators.Generic(lambda l, p, h: l - 2 * (h - p), self.daily_low, self.pivot_val, self.daily_high, _name='s3_val')
+        self.pivot_val = bt.indicators.Generic(lambda x, y, z: (x + y + z) / 3, self.daily_high, self.daily_low, self.daily_close)
+        self.r1_val = bt.indicators.Generic(lambda p, l: 2 * p - l, self.pivot_val, self.daily_low)
+        self.s1_val = bt.indicators.Generic(lambda p, h: 2 * p - h, self.pivot_val, self.daily_high)
+        self.r2_val = bt.indicators.Generic(lambda p, h, l: p + (h - l), self.pivot_val, self.daily_high, self.daily_low)
+        self.s2_val = bt.indicators.Generic(lambda p, h, l: p - (h - l), self.pivot_val, self.daily_high, self.daily_low)
+        self.r3_val = bt.indicators.Generic(lambda h, p, l: h + 2 * (p - l), self.daily_high, self.pivot_val, self.daily_low)
+        self.s3_val = bt.indicators.Generic(lambda l, p, h: l - 2 * (h - p), self.daily_low, self.pivot_val, self.daily_high)
 
         self.order = None
 

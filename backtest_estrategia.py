@@ -157,7 +157,7 @@ if __name__ == '__main__':
     class CustomPandasData(bt.feeds.PandasData):
         # Apenas as colunas *adicionais* que não são OHLCV padrão
         lines = (
-            'real_volume',
+            # 'real_volume', # Removido
         )
 
         # Mapeamento de colunas padrão do Backtrader para os nomes no seu DataFrame

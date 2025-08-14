@@ -8,7 +8,8 @@ TIMEFRAME = mt5.TIMEFRAME_H1
 YEARS_OF_DATA = 5
 
 # --- Nome do Arquivo de Saída ---
-OUTPUT_FILE = f"{SYMBOL.lower()}_{TIMEFRAME}_data.csv"
+# --- Nome do Arquivo de Saída ---
+OUTPUT_FILE = f"xauusd_h1_data.csv"
 
 def collect_data():
     """

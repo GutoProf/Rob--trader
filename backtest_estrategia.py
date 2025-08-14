@@ -123,7 +123,8 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro()
 
     # Carregar os dados com indicadores
-    df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time_dt'], index_col='time_dt')
+    # CORREÇÃO: Usar a coluna 'time' como índice e parsear como datas
+    df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time'], index_col='time')
 
     # Adicionar os dados ao Cerebro
     data = bt.feeds.PandasData(dataname=df)

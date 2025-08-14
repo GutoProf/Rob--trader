@@ -146,21 +146,7 @@ if __name__ == '__main__':
         volume='tick_volume',  # Mapeia a coluna 'tick_volume' do CSV para 'volume' do Backtrader
         openinterest=-1,       # Indica que não há coluna de open interest
 
-        # Mapeamento das linhas adicionais
-        # Cada item na tupla é (nome_da_linha_no_backtrader, nome_da_coluna_no_dataframe)
-        # Se o nome da linha for o mesmo da coluna, basta o nome da coluna
-        lines=(
-            'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
-            'ema50', 'ema200', 'atr14',
-            'engulfing', 'hammer',
-            'hour', 'day_of_week',
-            'session_asia', 'session_london', 'session_ny',
-            'real_volume', # Adicionando real_volume como uma linha personalizada
-        ),
-        # Adicionar os nomes das colunas que correspondem às linhas acima
-        # Isso é importante para que o Backtrader saiba de onde pegar os dados
-        # Se o nome da linha e o nome da coluna são os mesmos, não precisa de fromname/toname
-        # Mas para ser explícito e evitar erros, vamos listar todos
+        # Mapeamento das linhas adicionais usando fromname
         fromname=dict(
             pivot='pivot', r1='r1', s1='s1', r2='r2', s2='s2', r3='r3', s3='s3',
             ema50='ema50', ema200='ema200', atr14='atr14',

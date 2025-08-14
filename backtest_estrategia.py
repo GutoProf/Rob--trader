@@ -29,20 +29,28 @@ class EstrategiaIA(bt.Strategy):
         self.datahigh = self.datas[0].high
         self.datalow = self.datas[0].low
 
-        # Indicadores do Backtrader
+        # Indicadores do Backtrader (usando as linhas de dados mapeadas)
         self.ema50 = bt.indicators.EMA(self.datas[0], period=self.p.ema_short)
         self.ema200 = bt.indicators.EMA(self.datas[0], period=self.p.ema_long)
         self.atr14 = bt.indicators.ATR(self.datas[0], period=self.p.atr_period)
         
-        # Padrões de vela (usaremos as colunas do CSV diretamente, pois são complexos de recriar)
+        # Padrões de vela e Pivots (agora mapeados como linhas de dados)
         self.engulfing = self.datas[0].engulfing
         self.hammer = self.datas[0].hammer
-
-        # Pivot points (também usaremos as colunas do CSV)
         self.s1 = self.datas[0].s1
         self.s2 = self.datas[0].s2
+        self.s3 = self.datas[0].s3
         self.r1 = self.datas[0].r1
         self.r2 = self.datas[0].r2
+        self.r3 = self.datas[0].r3
+        self.pivot = self.datas[0].pivot
+
+        # Features de tempo e sessão (agora mapeadas como linhas de dados)
+        self.hour = self.datas[0].hour
+        self.day_of_week = self.datas[0].day_of_week
+        self.session_asia = self.datas[0].session_asia
+        self.session_london = self.datas[0].session_london
+        self.session_ny = self.datas[0].session_ny
 
         self.order = None
 
@@ -93,19 +101,19 @@ class EstrategiaIA(bt.Strategy):
                     'high': self.datahigh[0],
                     'low': self.datalow[0],
                     'close': self.dataclose[0],
-                    's1': self.s1[0], 's2': self.s2[0], 's3': self.datas[0].s3[0],
-                    'r1': self.r1[0], 'r2': self.r2[0], 'r3': self.datas[0].r3[0],
-                    'pivot': self.datas[0].pivot[0],
+                    's1': self.s1[0], 's2': self.s2[0], 's3': self.s3[0],
+                    'r1': self.r1[0], 'r2': self.r2[0], 'r3': self.r3[0],
+                    'pivot': self.pivot[0],
                     'ema50': self.ema50[0],
                     'ema200': self.ema200[0],
                     'atr14': self.atr14[0],
                     'engulfing': self.engulfing[0],
                     'hammer': self.hammer[0],
-                    'hour': self.datas[0].datetime.time().hour,
-                    'day_of_week': self.datas[0].datetime.date().weekday(),
-                    'session_asia': 1 if 0 <= self.datas[0].datetime.time().hour <= 8 else 0,
-                    'session_london': 1 if 7 <= self.datas[0].datetime.time().hour <= 16 else 0,
-                    'session_ny': 1 if 12 <= self.datas[0].datetime.time().hour <= 21 else 0,
+                    'hour': self.hour[0],
+                    'day_of_week': self.day_of_week[0],
+                    'session_asia': self.session_asia[0],
+                    'session_london': self.session_london[0],
+                    'session_ny': self.session_ny[0],
                 }
                 features_df = pd.DataFrame([current_candle_data])[self.features_order]
                 
@@ -122,12 +130,35 @@ class EstrategiaIA(bt.Strategy):
 if __name__ == '__main__':
     cerebro = bt.Cerebro()
 
+    # Mapeamento das colunas do CSV para o Backtrader
+    # As colunas padrão (datetime, open, high, low, close, volume, openinterest) são mapeadas automaticamente
+    # Outras colunas precisam ser explicitamente mapeadas como 'lines'
+    class MyPandasData(bt.feeds.PandasData):
+        lines = (
+            'tick_volume', 'real_volume', 
+            'pivot', 'r1', 's1', 'r2', 's2', 'r3', 's3',
+            'ema50', 'ema200', 'atr14',
+            'engulfing', 'hammer',
+            'hour', 'day_of_week',
+            'session_asia', 'session_london', 'session_ny',
+        )
+        # Mapeamento de colunas para os nomes padrão do Backtrader, se necessário
+        # cols = ['datetime', 'open', 'high', 'low', 'close', 'volume', 'openinterest']
+        # data = bt.feeds.PandasData(dataname=df, 
+        #                            datetime='time', 
+        #                            open='open', 
+        #                            high='high', 
+        #                            low='low', 
+        #                            close='close', 
+        #                            volume='tick_volume', 
+        #                            openinterest=-1, # Não temos openinterest
+        #                            lines=lines_map)
+
     # Carregar os dados com indicadores
-    # CORREÇÃO: Usar a coluna 'time' como índice e parsear como datas
     df = pd.read_csv('dados_com_indicadores.csv', parse_dates=['time'], index_col='time')
 
-    # Adicionar os dados ao Cerebro
-    data = bt.feeds.PandasData(dataname=df)
+    # Adicionar os dados ao Cerebro usando o feed personalizado
+    data = MyPandasData(dataname=df)
     cerebro.adddata(data)
 
     # Adicionar a estratégia

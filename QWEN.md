@@ -7,7 +7,7 @@ O projeto foi atualizado para incluir um **ciclo de aprendizado contínuo**, per
 ### Visão Geral do Projeto
 
 *   **Propósito:** Automatizar a execução de trades no par XAUUSD com base em uma estratégia predefinida e um filtro de IA que é periodicamente retreinado com dados de trades reais.
-*   **Tecnologias Principais:** Python, MetaTrader 5, pandas, scikit-learn, TA-Lib, joblib.
+*   **Tecnologias Principais:** Python, MetaTrader 5, pandas, scikit-learn, TA-Lib, joblib, backtrader.
 *   **Arquitetura:** O projeto é modular. A principal característica é o ciclo de feedback:
     1.  `robo_trader.py` executa trades.
     2.  Ele salva os dados e o resultado de cada trade no arquivo `historico_trades_executados.csv`.
@@ -19,6 +19,10 @@ O projeto foi atualizado para incluir um **ciclo de aprendizado contínuo**, per
 *   `treinamento_ia.py`: Este script agora combina o dataset simulado original com o histórico de trades reais para treinar uma nova versão do modelo de IA.
 *   `historico_trades_executados.csv`: Arquivo CSV que armazena o histórico de todos os trades executados pelo robô, servindo como o principal dataset para o retreinamento.
 *   `trades_abertos.json`: Arquivo temporário para que o robô rastreie as posições que ele abriu e que ainda não foram fechadas.
+
+### Backtest da Estratégia
+
+*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading utilizando a biblioteca `backtrader`. Ele carrega os dados históricos, aplica a estratégia e gera métricas de desempenho como Sharpe Ratio e Drawdown.
 
 ### Fluxo de Trabalho
 
@@ -38,7 +42,13 @@ O projeto foi atualizado para incluir um **ciclo de aprendizado contínuo**, per
         python robo_trader.py
         ```
 
-3.  **Retreinamento Periódico (Manual ou Automático):**
+3.  **Backtest da Estratégia:**
+    *   Execute o backtest para avaliar o desempenho da estratégia:
+        ```bash
+        python backtest_estrategia.py
+        ```
+
+4.  **Retreinamento Periódico (Manual ou Automático):**
     *   Após o robô ter executado alguns trades, rode o script de treinamento novamente para criar um modelo melhorado:
         ```bash
         python treinamento_ia.py

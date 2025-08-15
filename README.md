@@ -26,6 +26,7 @@ A lógica do robô é baseada em uma **confluência de três fatores**, com a de
 *   `treinamento_ia.py`: **(Retreinamento)** Script principal para treinar a IA. Ele combina os dados simulados com os dados de trades reais coletados pelo robô para criar um modelo cada vez mais preciso.
 *   `historico_trades_executados.csv`: Banco de dados com o histórico de todas as operações realizadas pelo robô.
 *   `retreinar_ia.bat`: Script de lote para automatizar a execução do retreinamento no Windows.
+*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading.
 *   Outros: `coleta_dados.py`, `calcula_indicadores.py`, `gerador_de_sinais.py` (usados para a criação do dataset inicial).
 
 ---
@@ -53,6 +54,12 @@ Com o modelo treinado e o terminal MT5 aberto, execute o robô:
 python robo_trader.py
 ```
 O robô começará a operar e a salvar os resultados de seus trades no arquivo `historico_trades_executados.csv`.
+
+### 4. Backtest da Estratégia
+Para avaliar o desempenho da estratégia, execute o backtest:
+```bash
+python backtest_estrategia.py
+```
 
 ---
 

@@ -47,6 +47,16 @@ class EstrategiaIA(bt.Strategy):
         self.s3_val = 0
 
         self.order = None
+        
+        # Variáveis para cálculo de métricas personalizadas
+        self.trades = []
+        self.won_trades = 0
+        self.lost_trades = 0
+        self.total_pnl = 0
+        self.gross_profit = 0
+        self.gross_loss = 0
+        self.won_pnl_list = []
+        self.lost_pnl_list = []
 
     def notify_order(self, order):
         """Notificação de status da ordem."""
@@ -62,6 +72,25 @@ class EstrategiaIA(bt.Strategy):
             print(f'{self.datas[0].datetime.date(0)}: Ordem Cancelada/Rejeitada')
 
         self.order = None
+
+    def notify_trade(self, trade):
+        """Notificação quando um trade é aberto ou fechado."""
+        if trade.isclosed:
+            # Um trade foi fechado
+            pnl = trade.pnlcomm  # Lucro ou perda com comissão
+            self.trades.append(pnl)
+            self.total_pnl += pnl
+            
+            if pnl > 0:
+                self.won_trades += 1
+                self.gross_profit += pnl
+                self.won_pnl_list.append(pnl)
+            else:
+                self.lost_trades += 1
+                self.gross_loss += abs(pnl)
+                self.lost_pnl_list.append(abs(pnl))
+                
+            print(f'{self.datas[0].datetime.date(0)}: Trade fechado, PNL: {pnl:.2f}')
 
     def next(self):
         """Lógica principal da estratégia, executada a cada vela."""
@@ -161,10 +190,20 @@ class EstrategiaIA(bt.Strategy):
 
             # Se a IA prever sucesso (1), envia a ordem
             if prediction == 1:
-                if signal == 1:
-                    self.order = self.buy()
-                elif signal == -1:
-                    self.order = self.sell()
+                # Fechar posições opostas, se houver
+                if self.position.size > 0 and signal == -1:  # Temos uma posição comprada e o sinal é de venda
+                    print(f'{self.datas[0].datetime.date(0)}: Fechando posição comprada')
+                    self.close()  # Fechar a posição comprada
+                elif self.position.size < 0 and signal == 1:  # Temos uma posição vendida e o sinal é de compra
+                    print(f'{self.datas[0].datetime.date(0)}: Fechando posição vendida')
+                    self.close()  # Fechar a posição vendida
+                
+                # Abrir nova posição, se não houver posição ou se a posição for na mesma direção
+                if (self.position.size == 0) or (self.position.size > 0 and signal == 1) or (self.position.size < 0 and signal == -1):
+                    if signal == 1:
+                        self.order = self.buy()
+                    elif signal == -1:
+                        self.order = self.sell()
 
 # --- FUNÇÃO PRINCIPAL PARA EXECUTAR O BACKTEST ---
 if __name__ == '__main__':
@@ -213,6 +252,8 @@ if __name__ == '__main__':
     cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio')
     cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
+    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
+    cerebro.addanalyzer(bt.analyzers.SQN, _name='sqn')  # System Quality Number
 
     print("--- Iniciando Backtest da Estratégia ---")
     # Executar o backtest
@@ -221,28 +262,71 @@ if __name__ == '__main__':
 
     # Imprimir os resultados
     print("\n--- Resultados do Backtest ---")
-    print(f"Valor Final do Portfólio: {cerebro.broker.getvalue():.2f}")
+    initial_cash = 10000.0
+    final_value = cerebro.broker.getvalue()
+    print(f"Valor Inicial do Portfólio: {initial_cash:.2f}")
+    print(f"Valor Final do Portfólio: {final_value:.2f}")
+    total_return = (final_value - initial_cash) / initial_cash
+    print(f"Retorno Total: {total_return * 100:.2f}%")
     
     # Resultados dos analisadores
     sharpe = strat.analyzers.sharpe_ratio.get_analysis()
     drawdown = strat.analyzers.drawdown.get_analysis()
-    trade_analysis = strat.analyzers.trade_analyzer.get_analysis()
+    returns_analysis = strat.analyzers.returns.get_analysis()
+    sqn_analysis = strat.analyzers.sqn.get_analysis()
 
     print(f"Sharpe Ratio: {sharpe.get('sharperatio', 'N/A')}")
     print(f"Drawdown Máximo: {drawdown.max.drawdown:.2f}%")
+    print(f"Drawdown Máximo em Valor: {drawdown.max.moneydown:.2f}")
     
-    if trade_analysis.total.total > 0:
-        print(f"Total de Trades: {trade_analysis.total.total}")
-        # Acessando valores com .get() para evitar KeyError
-        won_total = trade_analysis.get('won', {}).get('total', 0)
-        lost_total = trade_analysis.get('lost', {}).get('total', 0)
-        won_avg = trade_analysis.get('won', {}).get('pnl', {}).get('average', 0)
-        lost_avg = trade_analysis.get('lost', {}).get('pnl', {}).get('average', 0)
+    # Calcular Calmar Ratio
+    annual_return = returns_analysis.get('rnorm', 0)
+    max_drawdown = abs(drawdown.max.drawdown / 100)  # Converter para decimal
+    calmar_ratio = annual_return / max_drawdown if max_drawdown != 0 else 0
+    print(f"Calmar Ratio: {calmar_ratio:.2f}")
+    
+    # SQN (System Quality Number)
+    print(f"SQN: {sqn_analysis.get('sqn', 'N/A')}")
+    
+    # Métricas personalizadas
+    total_trades = strat.won_trades + strat.lost_trades
+    print(f"Total de Trades: {total_trades}")
+    print(f"Trades Vencedores: {strat.won_trades}")
+    print(f"Trades Perdedores: {strat.lost_trades}")
+    
+    if total_trades > 0:
+        # Percentual de Acerto
+        win_rate = (strat.won_trades / total_trades) * 100
+        print(f"Percentual de Acerto: {win_rate:.2f}%")
         
-        print(f"Trades Vencedores: {won_total}")
-        print(f"Trades Perdedores: {lost_total}")
-        print(f"Média de Lucro por Trade: {won_avg:.2f}")
-        print(f"Média de Perda por Trade: {lost_avg:.2f}")
+        # Média de Lucro por Trade Vencedor
+        avg_won = sum(strat.won_pnl_list) / len(strat.won_pnl_list) if strat.won_pnl_list else 0
+        print(f"Média de Lucro por Trade: {avg_won:.2f}")
+        
+        # Média de Perda por Trade Perdedor
+        avg_lost = sum(strat.lost_pnl_list) / len(strat.lost_pnl_list) if strat.lost_pnl_list else 0
+        print(f"Média de Perda por Trade: {avg_lost:.2f}")
+        
+        # Payoff Ratio
+        payoff_ratio = avg_won / avg_lost if avg_lost != 0 else 0
+        print(f"Payoff Ratio: {payoff_ratio:.2f}")
+        
+        # Fator de Lucro
+        profit_factor = strat.gross_profit / strat.gross_loss if strat.gross_loss != 0 else 0
+        print(f"Fator de Lucro: {profit_factor:.2f}")
+        
+        # Lucro Médio por Trade (incluindo perdas)
+        average_trade_pnl = strat.total_pnl / total_trades if total_trades > 0 else 0
+        print(f"Lucro Médio por Trade: {average_trade_pnl:.2f}")
+        
+        # Expectativa Matemática
+        expectancy = (win_rate / 100) * payoff_ratio - (1 - win_rate / 100) if win_rate != 0 else 0
+        print(f"Expectativa Matemática: {expectancy:.2f}")
+        
+        # Perda Média por Trade (já calculada como avg_lost)
+        print(f"Perda Média por Trade: {avg_lost:.2f}")
+    else:
+        print("Nenhum trade foi fechado.")
 
     # Plotar o gráfico
     # print("\nGerando gráfico do backtest...")

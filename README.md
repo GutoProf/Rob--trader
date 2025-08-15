@@ -26,7 +26,7 @@ A lógica do robô é baseada em uma **confluência de três fatores**, com a de
 *   `treinamento_ia.py`: **(Retreinamento)** Script principal para treinar a IA. Ele combina os dados simulados com os dados de trades reais coletados pelo robô para criar um modelo cada vez mais preciso.
 *   `historico_trades_executados.csv`: Banco de dados com o histórico de todas as operações realizadas pelo robô.
 *   `retreinar_ia.bat`: Script de lote para automatizar a execução do retreinamento no Windows.
-*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading.
+*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading com métricas avançadas.
 *   Outros: `coleta_dados.py`, `calcula_indicadores.py`, `gerador_de_sinais.py` (usados para a criação do dataset inicial).
 
 ---
@@ -56,10 +56,31 @@ python robo_trader.py
 O robô começará a operar e a salvar os resultados de seus trades no arquivo `historico_trades_executados.csv`.
 
 ### 4. Backtest da Estratégia
-Para avaliar o desempenho da estratégia, execute o backtest:
+Para avaliar o desempenho da estratégia com métricas avançadas, execute o backtest:
 ```bash
 python backtest_estrategia.py
 ```
+
+---
+
+## Métricas do Backtest
+
+O script de backtest agora calcula uma ampla gama de métricas para avaliar o desempenho da estratégia:
+
+*   **Retorno Total**
+*   **Sharpe Ratio**
+*   **Drawdown Máximo (%) e em Valor ($)**
+*   **Calmar Ratio**
+*   **SQN (System Quality Number)**
+*   **Total de Trades**
+*   **Trades Vencedores e Perdedores**
+*   **Percentual de Acerto**
+*   **Média de Lucro por Trade**
+*   **Média de Perda por Trade**
+*   **Payoff Ratio**
+*   **Fator de Lucro**
+*   **Lucro Médio por Trade**
+*   **Expectativa Matemática**
 
 ---
 

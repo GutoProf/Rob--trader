@@ -22,7 +22,7 @@ O projeto foi atualizado para incluir um **ciclo de aprendizado contínuo**, per
 
 ### Backtest da Estratégia
 
-*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading utilizando a biblioteca `backtrader`. Ele carrega os dados históricos, aplica a estratégia e gera métricas de desempenho como Sharpe Ratio e Drawdown.
+*   `backtest_estrategia.py`: Script para realizar backtest da estratégia de trading utilizando a biblioteca `backtrader`. Ele carrega os dados históricos, aplica a estratégia e gera métricas de desempenho como Sharpe Ratio, Drawdown, Calmar Ratio, Sortino Ratio, entre outras.
 
 ### Fluxo de Trabalho
 
